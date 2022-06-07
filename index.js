@@ -11,6 +11,7 @@ const functionMap = {
   DRAWSQUARES: DRAWSQUARES,
   DRAWSTRIPES: DRAWSTRIPES,
   DRAWORBITS: DRAWORBITS,
+  DRAWPYRAMIDS: DRAWPYRAMIDS,
 };
 let activeDrawingFunction = functionMap[functionGetParam];
 let activeDrawingFunctionState = null;
@@ -84,6 +85,32 @@ function setBGSize() {
 /////////////////////////////////////////////////////////
 /// DRAWING FUNCTIONS, take bg, time, and old state, return new state
 /////////////////////////////////////////////////////////
+
+function DRAWPYRAMIDS(bg, time, state) {
+  bg.clear();
+  DRAWPYRAMIDS.NOBJECTS = 40;
+  DRAWPYRAMIDS.COL1 = "grey";
+  DRAWPYRAMIDS.COL2 = "white";
+  for (let i = DRAWPYRAMIDS.NOBJECTS; i > 0; i--) {
+    let h = (bg.height * i) / DRAWPYRAMIDS.NOBJECTS;
+    let w = (bg.width * i) / DRAWPYRAMIDS.NOBJECTS;
+    let shift = Math.cos(i / 10 + time / 800) * 5;
+    let shiftx = Math.sin(i / 40 + time / 1000) * 5;
+    let shifty = Math.cos(i / 40 + time / 1000) * 5;
+    h += shift;
+    w += shift;
+    bg.ctx.fillStyle = i % 2 == 0 ? DRAWPYRAMIDS.COL1 : DRAWPYRAMIDS.COL2;
+
+    bg.ctx.fillRect(
+      (bg.width - w) / 2 + shiftx,
+      (bg.height - h) / 2 + shifty,
+      w,
+      h
+    );
+  }
+
+  return null;
+}
 
 function DRAWORBITS(bg, time, state) {
   function randomPos() {
