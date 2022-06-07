@@ -4,7 +4,15 @@
 
 let time = 0;
 const bg = setUpBackgroundAndContext();
-let activeDrawingFunction = DRAWSTRIPES;
+
+let functionGetParam = findGetParameter("f") ?? "DRAWSTRIPES";
+
+const functionMap = {
+  DRAWSQUARES: DRAWSQUARES,
+  DRAWSTRIPES: DRAWSTRIPES,
+  DRAWORBITS: DRAWORBITS,
+};
+let activeDrawingFunction = functionMap[functionGetParam];
 let activeDrawingFunctionState = null;
 setBGSize();
 bg.clear();
@@ -15,7 +23,7 @@ const MSSTEP = 20;
 setInterval(loop, MSSTEP);
 function loop() {
   time += MSSTEP;
-  bg.clear();
+
   activeDrawingFunctionState = activeDrawingFunction(
     bg,
     time,
@@ -23,13 +31,10 @@ function loop() {
   );
 }
 
-const functionMap = {
-  DRAWSQUARES: DRAWSQUARES,
-  DRAWSTRIPES: DRAWSTRIPES,
-};
-
 Object.keys(functionMap).forEach((id) => {
   document.getElementById(id).addEventListener("click", () => {
+    window.history.pushState("id", "id", "?f=" + id);
+    // window.location.assign();
     activeDrawingFunctionState = null;
     activeDrawingFunction = functionMap[id];
   });
@@ -55,8 +60,8 @@ function setUpBackgroundAndContext() {
   document.querySelector("body").style.height = "100%";
   const ctx = bg.getContext("2d");
   bg.ctx = ctx;
-  bg.clear = () => {
-    bg.ctx.fillStyle = "black";
+  bg.clear = (color) => {
+    bg.ctx.fillStyle = color ?? "black";
     bg.ctx.fillRect(0, 0, bg.width, bg.height);
   };
 
@@ -80,6 +85,67 @@ function setBGSize() {
 /// DRAWING FUNCTIONS, take bg, time, and old state, return new state
 /////////////////////////////////////////////////////////
 
+function DRAWORBITS(bg, time, state) {
+  function randomPos() {
+    return { x: Math.random() * bg.width, y: Math.random() * bg.height };
+  }
+
+  DRAWORBITS.NOBJECTS = 30;
+  if (!state) {
+    state = Array(DRAWORBITS.NOBJECTS)
+      .fill(0)
+      .map((e) => {
+        let angle = Math.random() * 2 * Math.PI;
+        return {
+          center: randomPos(),
+          angle: angle,
+          oldAngle: angle,
+          radius: Math.random() * 100,
+          dir: { x: Math.random() * 20 - 10, y: Math.random() * 20 - 10 },
+          col: randomHslColor(null, 100, 50),
+        };
+      });
+    bg.clear("white");
+  }
+
+  function calcPos(center, radius, angle) {
+    x = Math.sin(angle) * radius;
+    y = Math.cos(angle) * radius;
+    return { x: center.x + x, y: center.y + y };
+  }
+
+  function modoloPos(center) {
+    return { x: center.x % bg.width, y: center.y % bg.height };
+  }
+  bg.clear("rgba(255,255,255,0.00)");
+  bg.ctx.lineWidth = 2;
+
+  for (let i = 0; i < state.length; i++) {
+    const element = state[i];
+    let { center, angle, oldAngle, radius, dir, col } = element;
+    // update values:
+
+    center.x += dir.x;
+    center.y += dir.y;
+    center = center = modoloPos(center);
+    oldAngle = angle;
+    angle += 0.1;
+    state[i] = { center, angle, oldAngle, radius, dir, col };
+
+    // draw:
+    let timeRadius = radius * (Math.sin(time / 1000) + 1);
+    let oldPos = calcPos(center, timeRadius, oldAngle);
+    let newPos = calcPos(center, timeRadius, angle);
+    bg.ctx.beginPath();
+    bg.ctx.strokeStyle = col;
+    bg.ctx.moveTo(oldPos.x, oldPos.y);
+    bg.ctx.lineTo(newPos.x, newPos.y);
+    bg.ctx.stroke();
+  }
+
+  return state;
+}
+
 // deterministic, state not used
 function DRAWSTRIPES(bg, time, state) {
   DRAWSTRIPES.STRIPECOUNT = 100;
@@ -91,6 +157,7 @@ function DRAWSTRIPES(bg, time, state) {
     return (Math.sin(s * 20) + 1 + Math.sin(s * 70 + 0.5) * 0.2 + 1) / 3;
   };
 
+  bg.clear();
   for (let i = 0; i < DRAWSTRIPES.STRIPECOUNT; i++) {
     let val = wavefun(i / DRAWSTRIPES.STRIPECOUNT);
     let y = h * i;
@@ -136,6 +203,7 @@ function DRAWSQUARES(bg, time, state) {
     r.map((e, j) => lerp(e, targetGrid[i][j], DRAWSQUARES.LERPFACTOR))
   );
 
+  bg.clear();
   let h = bg.height / dim[0];
   let w = bg.width / dim[1];
   for (let i = 0; i < dim[0]; i++) {
@@ -195,3 +263,28 @@ function DRAWSQUARES(bg, time, state) {
 //   setInterval(updateWave, MSSTEP);
 //   window.addEventListener("resize", setBGSize);
 // }
+
+function positiveInteger(max) {
+  return Math.floor(Math.random() * (max + 1));
+}
+
+function randomHslColor(hh, ss, ll) {
+  let h = hh ?? positiveInteger(360);
+  let s = ss ?? positiveInteger(100);
+  let l = ll ?? positiveInteger(100);
+
+  return `hsl(${h},${s}%,${l}%)`;
+}
+
+function findGetParameter(parameterName) {
+  var result = null,
+    tmp = [];
+  location.search
+    .substr(1)
+    .split("&")
+    .forEach(function (item) {
+      tmp = item.split("=");
+      if (tmp[0] === parameterName) result = decodeURIComponent(tmp[1]);
+    });
+  return result;
+}
